@@ -3,12 +3,12 @@ from web3 import Web3
 
 class Wallet:
     def __init__(self):
-        self.address = None          # wallet address (set when you fetch)
-        self.eth_balance = 0.0       # ETH balance on Base
-        self.cbbtc_balance = 0.0     # cbBTC balance on Base
+        self.address = None
+        self.eth_balance = 0.0
+        self.cbbtc_balance = 0.0
 
 
-    def fetch_balances(self):
+    def update_balances(self):
         address_input = input("\nenter your base network wallet address (starts with 0x): ").strip()
 
         if not address_input.startswith("0x") or len(address_input) != 42:
@@ -62,4 +62,4 @@ class Wallet:
 
 if __name__ == "__main__":
     my_wallet = Wallet()
-    my_wallet.fetch_balances()
+    my_wallet.update_balances()
