@@ -63,3 +63,5 @@ class Wallet:
 if __name__ == "__main__":
     wallet = Wallet()
     wallet.update_balances()
+    #print(wallet.eth_balance)
+    #print(wallet.cbbtc_balance)
