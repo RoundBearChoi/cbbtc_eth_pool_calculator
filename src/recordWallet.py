@@ -31,16 +31,16 @@ class Recorder:
 
         if self.wallet.address is None:
             print('')
-            print("❌ Could not load wallet - recording cancelled")
+            print("❌ could not load wallet - recording cancelled")
             return
 
         print('')
-        print("🔄 Fetching BTC & ETH prices from CoinGecko...")
+        print('🔄 fetching btc, eth prices from coingecko...')
         btc_price = self.prices.getPrice('btc')
         eth_price = self.prices.getPrice('eth')
 
         if btc_price is None or eth_price is None:
-            print("❌ Could not fetch prices - recording cancelled")
+            print("❌ could not fetch prices - recording cancelled")
             return
 
         # Convert both to float for safe calculations
@@ -78,7 +78,7 @@ class Recorder:
             writer.writerow(row)
 
         print('')
-        print(f"✅ Recorded successfully at {date_str} {time_str}")
+        print(f"✅ recorded successfully at {date_str} {time_str}")
         print(f"   BTC   : ${btc_price:,.2f}")
         print(f"   ETH   : ${eth_price:,.2f}")
         print(f"   Wallet: {cbbtc:.8f} cbBTC + {eth:.6f} ETH")
