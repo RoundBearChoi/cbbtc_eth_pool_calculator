@@ -28,8 +28,12 @@ class Swap:
         self.cbbtc_balance = float(self.wallet.cbbtc_balance)
 
         if self.cbbtc_balance <= 0:
-            print("⚠️  No cbBTC found – nothing to rebalance.")
-            return False
+            self.cbbtc_balance = 0.00001
+            #print("⚠️  No cbBTC found – nothing to rebalance.")
+            #return False
+
+        if self.eth_balance <= 0:
+            self.eth_balance = 0.00001
 
         # 2. Market prices (reference only)
         print("\n2️⃣  Fetching CoinGecko prices...")
