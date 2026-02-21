@@ -46,7 +46,7 @@ class Wallet:
             raw_balance = contract.functions.balanceOf(self.address).call()
             self.cbbtc_balance = raw_balance / 10**8
 
-            print("\n✅ balances updated")
+            print("\n✅ current balance")
             print(f"   eth   : {self.eth_balance:.6f}")
             print(f"   cbbtc : {self.cbbtc_balance:.8f}")
 
