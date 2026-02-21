@@ -4,16 +4,6 @@ import sys
 
 
 class PanPrice:
-    """
-    PanPrice class for the specific WETH/cbBTC 0.01% pool on Base (PancakeSwap V3).
-    All logic (price fetching, calculation, and interactive CLI) is fully inside the class.
-    
-    Use:
-        pan = PanPrice()
-        eth_needed = pan.get_eth_needed(lower_pct=5, upper_pct=5)   # clean float only
-        pan.run_interactive()                                       # single-run CLI (no repeat)
-    """
-    
     POOL_ADDRESS = "0xC211e1f853A898Bd1302385CCdE55f33a8C4B3f3"
     
 
