@@ -2,6 +2,7 @@ import math
 import requests
 import sys
 
+
 class PanPrice:
     """
     PanPrice class for the specific WETH/cbBTC 0.01% pool on Base (PancakeSwap V3).
@@ -15,9 +16,11 @@ class PanPrice:
     
     POOL_ADDRESS = "0xC211e1f853A898Bd1302385CCdE55f33a8C4B3f3"
     
+
     def __init__(self):
         self.current_price = None  # WETH per 1 cbBTC
     
+
     def fetch_current_price(self) -> float:
         """Fetch live price from GeckoTerminal"""
         try:
@@ -33,11 +36,13 @@ class PanPrice:
             print(f"⚠️  Could not fetch live price: {e}")
             return None
     
+
     def set_current_price(self, price: float):
         """Manually set current price"""
         self.current_price = float(price)
         print(f"✅ Using manual price: {self.current_price:.6f} WETH = 1 cbBTC")
     
+
     @staticmethod
     def _calculate_weth_needed(p_current: float, lower_pct: float, upper_pct: float, amount_cbbtc: float = 1.0) -> float:
         """Core V3 liquidity math"""
@@ -56,6 +61,7 @@ class PanPrice:
         
         return weth_needed
     
+
     def get_eth_needed(self, lower_pct: float, upper_pct: float, amount_cbbtc: float = 1.0) -> float:
         """
         Returns ONLY the exact WETH amount needed.
@@ -65,7 +71,8 @@ class PanPrice:
             raise ValueError("Call fetch_current_price() or set_current_price() first!")
         
         return self._calculate_weth_needed(self.current_price, lower_pct, upper_pct, amount_cbbtc)
-    
+   
+
     def run_interactive(self):
         # Try live price first
         self.fetch_current_price()
@@ -90,7 +97,6 @@ class PanPrice:
                 print("Percentages must be positive.")
                 sys.exit(1)
                 
-            # Use the clean method you requested
             eth_needed = self.get_eth_needed(lower_pct, upper_pct)
             print('')
             print(f"internal ratio 1 cbbtc : {eth_needed:.6f} weth")
@@ -103,7 +109,6 @@ class PanPrice:
             sys.exit(1)
 
 
-# =============== ONLY ONE LINE OUTSIDE THE CLASS ===============
 if __name__ == "__main__":
     pan = PanPrice()
     pan.run_interactive()
