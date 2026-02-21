@@ -73,7 +73,7 @@ class PanPrice:
         return self._calculate_weth_needed(self.current_price, lower_pct, upper_pct, amount_cbbtc)
    
 
-    def run_interactive(self):
+    def run_interactive(self) -> float:
         # Try live price first
         self.fetch_current_price()
         
@@ -100,7 +100,8 @@ class PanPrice:
             eth_needed = self.get_eth_needed(lower_pct, upper_pct)
             print('')
             print(f"internal ratio 1 cbbtc : {eth_needed:.6f} weth")
-            
+            return eth_needed    
+
         except ValueError:
             print("Please enter valid numbers.")
             sys.exit(1)
@@ -108,7 +109,10 @@ class PanPrice:
             print(f"Error: {e}")
             sys.exit(1)
 
+        return 0.0
+
 
 if __name__ == "__main__":
     pan = PanPrice()
-    pan.run_interactive()
+    ratio = pan.run_interactive()
+    #print(ratio)
