@@ -80,11 +80,5 @@ if __name__ == "__main__":
     p = Prices()
     
     print("Current Prices (CoinGecko)")
-    #print("─" * 40)
     print(f"BTC   = {p.getPriceFormatted('btc')}")
-    #print(f"ETH   = {p.getPriceFormatted('eth')}")
-    #print(f"SOL   = {p.getPriceFormatted('sol')}")
-    #print(f"DOGE  = {p.getPriceFormatted('doge')}")
-    #print(f"XRP   = {p.getPriceFormatted('xrp')}")
-    #print(f"BNB   = {p.getPriceFormatted('bnb')}")
-    #print("─" * 40)
+    #print(p.getPrice('btc'))
