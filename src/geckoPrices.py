@@ -53,7 +53,7 @@ class Prices:
 
         except Exception as e:
             print('')
-            print(f"❌ Error getting price for {symbol}: {e}")
+            print(f"❌ error getting price for {symbol}: {e}")
             return None
 
 
