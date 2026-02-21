@@ -61,5 +61,5 @@ class Wallet:
 
 
 if __name__ == "__main__":
-    my_wallet = Wallet()
-    my_wallet.update_balances()
+    wallet = Wallet()
+    wallet.update_balances()
