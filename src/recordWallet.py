@@ -13,6 +13,7 @@ class Recorder:
         self.csv_file = csv_file
         self._ensure_csv_exists()
 
+    
     def _ensure_csv_exists(self):
         """Create the CSV file with correct headers if it doesn't exist"""
         if not os.path.exists(self.csv_file):
@@ -24,6 +25,7 @@ class Recorder:
                     'btc_equivalent', 'total_usd_value'
                 ])
             print(f"✅ Created new CSV file: {self.csv_file}")
+
 
     def record(self):
         """Record current wallet balances + CoinGecko prices and append to CSV"""
