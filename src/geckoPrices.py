@@ -52,6 +52,7 @@ class Prices:
             return float(price) if price is not None else None
 
         except Exception as e:
+            print('')
             print(f"❌ Error getting price for {symbol}: {e}")
             return None
 

@@ -27,7 +27,7 @@ class Wallet:
             self.address = w3.to_checksum_address(address_input)
 
             print('')
-            print(f"🔍 fetching balances..")
+            print(f"🔄 fetching balances..")
 
             # === eth balance (18 decimals) ===
             eth_wei = w3.eth.get_balance(self.address)
