@@ -1,12 +1,14 @@
 from walletBalance import Wallet
-from geckoPrices import Prices
+#from geckoPrices import Prices
+from marketRate import CryptoRatioFetcher
 from panPrice import PanPrice
 
 
 class Swap:
     def __init__(self):
         self.wallet = Wallet()
-        self.prices = Prices()
+        #self.prices = Prices()
+        self.fetcher = CryptoRatioFetcher()
         self.pan = PanPrice()
         
         self.cbbtc_balance = 0.0
@@ -37,6 +39,9 @@ class Swap:
 
         # 2. Market prices (reference only)
         print("\n2️⃣  Fetching CoinGecko prices...")
+        self.market_ratio = self.fetcher.get_btc_eth_ratio()
+
+        '''
         btc_usd = self.prices.getPrice('btc')
         eth_usd = self.prices.getPrice('eth')
         
@@ -47,7 +52,7 @@ class Swap:
             print(f"   Market ratio → 1 cbBTC ≈ {self.market_ratio:.4f} ETH")
         else:
             print("⚠️  Could not fetch market prices (using 0 for value calc)")
-
+        '''
         # 3. Preferred ratio = ETH needed per 1 cbBTC for your chosen range
         print("\n3️⃣  Setting preferred ratio from your liquidity range...")
         print("     (This calls pan.run_interactive() → enter lower/upper %)")
