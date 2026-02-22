@@ -8,13 +8,11 @@ class CryptoRatioFetcher:
 
     def __init__(self, timeout: int = 10):
         self.timeout = timeout
+        self.btc_price = 0.0
+        self.eth_price = 0.0
 
 
     def get_btc_eth_ratio(self) -> float:
-        """
-        Returns BTC price ÷ ETH price (the BTC/ETH ratio).
-        Example: ~0.0523 means 1 BTC ≈ 0.0523 ETH (or 1 ETH ≈ 19.12 BTC)
-        """
         params = {
             "ids": "bitcoin,ethereum",
             "vs_currencies": "usd",          # CoinGecko needs a fiat currency
@@ -30,10 +28,10 @@ class CryptoRatioFetcher:
         
         data = response.json()
         
-        btc_price = data["bitcoin"]["usd"]
-        eth_price = data["ethereum"]["usd"]
+        self.btc_price = data["bitcoin"]["usd"]
+        self.eth_price = data["ethereum"]["usd"]
         
-        ratio = btc_price / eth_price
+        ratio = self.btc_price / self.eth_price
         return ratio
 
 

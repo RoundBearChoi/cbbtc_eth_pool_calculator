@@ -1,5 +1,4 @@
 from walletBalance import Wallet
-#from geckoPrices import Prices
 from marketRate import CryptoRatioFetcher
 from panPrice import PanPrice
 
@@ -7,14 +6,13 @@ from panPrice import PanPrice
 class Swap:
     def __init__(self):
         self.wallet = Wallet()
-        #self.prices = Prices()
         self.fetcher = CryptoRatioFetcher()
         self.pan = PanPrice()
         
         self.cbbtc_balance = 0.0
         self.eth_balance = 0.0
         self.market_ratio = 0.0       # CoinGecko BTC/ETH (for reference & value calc)
-        self.internal_ratio = 0.0     # Current pool price (for swap estimate)
+        #self.internal_ratio = 0.0     # Current pool price (for swap estimate)
         self.preferred_ratio = 0.0    # ← NOW comes from run_interactive() liquidity range
 
 
@@ -25,7 +23,10 @@ class Swap:
 
         # 1. Wallet balances
         print("\n1️⃣  Updating wallet balances...")
-        self.wallet.update_balances()
+        
+        if (self.wallet.update_balances() == False):
+            return
+
         self.eth_balance = float(self.wallet.eth_balance)
         self.cbbtc_balance = float(self.wallet.cbbtc_balance)
 
@@ -41,18 +42,6 @@ class Swap:
         print("\n2️⃣  Fetching CoinGecko prices...")
         self.market_ratio = self.fetcher.get_btc_eth_ratio()
 
-        '''
-        btc_usd = self.prices.getPrice('btc')
-        eth_usd = self.prices.getPrice('eth')
-        
-        if btc_usd and eth_usd and eth_usd > 0:
-            self.market_ratio = btc_usd / eth_usd
-            print(f"   BTC  : ${btc_usd:,.2f}")
-            print(f"   ETH  : ${eth_usd:,.2f}")
-            print(f"   Market ratio → 1 cbBTC ≈ {self.market_ratio:.4f} ETH")
-        else:
-            print("⚠️  Could not fetch market prices (using 0 for value calc)")
-        '''
         # 3. Preferred ratio = ETH needed per 1 cbBTC for your chosen range
         print("\n3️⃣  Setting preferred ratio from your liquidity range...")
         print("     (This calls pan.run_interactive() → enter lower/upper %)")
@@ -60,10 +49,10 @@ class Swap:
         self.preferred_ratio = self.pan.run_interactive()
         
         if self.preferred_ratio is None or self.preferred_ratio <= 0:
-            print("❌ Failed to get preferred ratio.")
+            print("❌ failed to get preferred ratio")
             return False
 
-        self.internal_ratio = self.pan.current_price   # live pool price for swap suggestion
+        #self.internal_ratio = self.pan.current_price   # live pool price for swap suggestion
 
         # Summary
         current_holdings_ratio = self.eth_balance / self.cbbtc_balance
@@ -71,7 +60,7 @@ class Swap:
         print(f"   Current holdings ratio : {current_holdings_ratio:.6f} ETH per cbBTC")
         print(f"   Market ratio           : {self.market_ratio:.4f}")
         print(f"   Preferred ratio (range): {self.preferred_ratio:.6f} ← USING THIS")
-        print(f"   Current pool price     : {self.internal_ratio:.6f}")
+        #print(f"   Current pool price     : {self.internal_ratio:.6f}")
         
         return True
 
@@ -79,7 +68,7 @@ class Swap:
     def calculate_targets(self):
         """Exact same spreadsheet math as your original file"""
         if self.cbbtc_balance <= 0 or self.preferred_ratio <= 0:
-            print("❌ Run fetch_all_data() first")
+            print("❌ run fetch_all_data() first")
             return None
 
         total_eth_equiv = self.eth_balance + (self.cbbtc_balance * self.market_ratio)

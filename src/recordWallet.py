@@ -3,13 +3,13 @@ import os
 from datetime import datetime
 
 from walletBalance import Wallet
-from geckoPrices import Prices
+from marketRate import CryptoRatioFetcher
 
 
 class Recorder:
     def __init__(self, csv_file="base-btc-eth.csv"):
         self.wallet = Wallet()
-        self.prices = Prices()
+        self.fetcher = CryptoRatioFetcher()
         self.csv_file = csv_file
         self._ensure_csv_exists()
 
@@ -28,8 +28,8 @@ class Recorder:
 
 
     def record(self):
-        """Record current wallet balances + CoinGecko prices and append to CSV"""
-        self.wallet.update_balances()
+        if (self.wallet.update_balances() == False):
+            return
 
         if self.wallet.address is None:
             print('')
@@ -38,12 +38,9 @@ class Recorder:
 
         print('')
         print('🔄 fetching btc, eth prices from coingecko...')
-        btc_price = self.prices.getPrice('btc')
-        eth_price = self.prices.getPrice('eth')
-
-        if btc_price is None or eth_price is None:
-            print("❌ could not fetch prices - recording cancelled")
-            return
+        self.fetcher.get_btc_eth_ratio()
+        btc_price = self.fetcher.btc_price
+        eth_price = self.fetcher.eth_price
 
         # Convert both to float for safe calculations
         cbbtc = float(self.wallet.cbbtc_balance)

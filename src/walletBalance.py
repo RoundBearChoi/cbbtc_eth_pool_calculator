@@ -8,19 +8,19 @@ class Wallet:
         self.cbbtc_balance = 0.0
 
 
-    def update_balances(self):
+    def update_balances(self) -> bool:
         address_input = input("\nenter your base network wallet address (starts with 0x): ").strip()
 
         if not address_input.startswith("0x") or len(address_input) != 42:
             print("❌ invalid address format")
-            return
+            return False
 
         # connect to base (public RPC - fine for personal use)
         w3 = Web3(Web3.HTTPProvider("https://mainnet.base.org"))
 
         if not w3.is_connected():
             print("❌ could not connect to base network.. try again later.")
-            return
+            return False
 
         try:
             # convert to checksum address
@@ -49,9 +49,11 @@ class Wallet:
             print("\n✅ current balance")
             print(f"   eth   : {self.eth_balance:.6f}")
             print(f"   cbbtc : {self.cbbtc_balance:.8f}")
+            return True
 
         except Exception as e:
-            print(f"❌ error: {e}")
+            print(f"❌ {e}")
+            return False
 
 
     def __str__(self):
