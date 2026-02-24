@@ -21,7 +21,7 @@ class Recorder:
                 writer = csv.writer(f)
                 writer.writerow([
                     'date', 'time', 'btc_price', 'eth_price', 'btc_eth_ratio',
-                    'cbbtc_balance', 'eth_balance', 'wallet_ratio',
+                    'cbbtc_balance', 'eth_balance',
                     'btc_equivalent', 'total_usd_value'
                 ])
             print(f"✅ Created new CSV file: {self.csv_file}")
@@ -46,9 +46,8 @@ class Recorder:
         cbbtc = float(self.wallet.cbbtc_balance)
         eth    = float(self.wallet.eth_balance)
 
-        # === Calculations (exactly like your sample CSV) ===
+        # === Calculations ===
         btc_eth_ratio = btc_price / eth_price
-        wallet_ratio  = eth / cbbtc if cbbtc > 0 else 0.0
         btc_equivalent = cbbtc + (eth / btc_eth_ratio)
         total_usd_value = btc_equivalent * btc_price
 
@@ -57,7 +56,7 @@ class Recorder:
         date_str = now.strftime("%Y-%m-%d")
         time_str = now.strftime("%H:%M:%S")
 
-        # Row (same precision as your CSV)
+        # Row (cleaned up - no wallet_ratio)
         row = [
             date_str,
             time_str,
@@ -66,7 +65,6 @@ class Recorder:
             round(btc_eth_ratio, 6),
             round(cbbtc, 8),
             round(eth, 8),
-            round(wallet_ratio, 8),
             round(btc_equivalent, 8),
             round(total_usd_value, 2)
         ]
@@ -81,7 +79,6 @@ class Recorder:
         print(f"   BTC   : ${btc_price:,.2f}")
         print(f"   ETH   : ${eth_price:,.2f}")
         print(f"   Wallet: {cbbtc:.8f} cbBTC + {eth:.6f} ETH")
-        print(f"   Ratio : {wallet_ratio:.2f} ETH per cbBTC")
         print(f"   BTC eq: {btc_equivalent:.8f} BTC")
         print(f"   Value : ${total_usd_value:,.2f}")
 
