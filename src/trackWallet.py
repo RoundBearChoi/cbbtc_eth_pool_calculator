@@ -70,18 +70,18 @@ class Wallet:
 
                     if action == "tokentx":
                         value = int(tx["value"]) / 10**8
-                        typ = "cbBTC"
-                        label = "cbBTC Transfer"
+                        token_label = "cbBTC"
+                        tx_label = "cbBTC Transfer"
                     else:
                         value = int(tx.get("value", 0)) / 10**18
-                        typ = "ETH"
-                        if action == "txlistinternal" and value < 0.000001:
+                        token_label = "ETH"
+                        if action == "txlistinternal" and value < 0.00000001:
                             continue
                         to_addr = tx.get("to", "").lower()
                         if any(p in to_addr for p in ["46a15b0b", "c6a2db66"]):
-                            label = "🥞 Pancake V3 LP"
+                            tx_label = "🥞 Pancake V3 LP"
                         else:
-                            label = "Internal ETH" if action == "txlistinternal" else ("ETH Transfer" if value > 0.000001 else "Contract Call")
+                            tx_label = "Internal ETH" if action == "txlistinternal" else ("ETH Transfer" if value > 0.000001 else "Contract Call")
 
                     direction = "OUT" if tx.get("from", "").lower() == lower_addr else "IN"
 
@@ -89,8 +89,8 @@ class Wallet:
                         "time": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"),
                         "dir": direction,
                         "amount": value,
-                        "label": label,
-                        "type": typ
+                        "token": token_label,
+                        "label": tx_label
                     })
             except Exception as e:
                 print(f"   ⚠️ {action} error: {e}")
@@ -101,24 +101,24 @@ class Wallet:
             return
 
         # Dedupe + sort OLDEST → NEWEST
-        tx_list = list({(t["time"], t["amount"], t["label"]): t for t in tx_list}.values())
+        tx_list = list({(t["time"], t["amount"], t["token"], t["label"]): t for t in tx_list}.values())
         tx_list.sort(key=lambda x: x["time"])
 
         print(f"\n✅ {len(tx_list)} ETH & cbBTC activities found (oldest → newest):\n")
         for t in tx_list:
-            amt_str = f"{t['amount']:.6f} ETH" if t["type"] == "ETH" else f"{t['amount']:.8f} cbBTC"
-            print(f"{t['time']}  |  {t['dir']:>3}  {amt_str:>18}  |  {t['label']}")
+            amt_str = f"{t['amount']:.8f}"
+            print(f"{t['time']}  |  {t['dir']:>3}   {amt_str:>18}  |  {t['token']:>6}  |  {t['label']}")
 
         # Current balance at the very end
         self.print_current_balance()
 
     def print_current_balance(self):
-        print("\n" + "="*70)
+        print("\n" + "="*85)
         print("✅ CURRENT BALANCE (after all listed activity)")
-        print("="*70)
-        print(f"   eth   : {self.eth_balance:.6f}")
+        print("="*85)
+        print(f"   eth   : {self.eth_balance:.8f}")
         print(f"   cbbtc : {self.cbbtc_balance:.8f}")
-        print("="*70)
+        print("="*85)
 
 if __name__ == "__main__":
     wallet = Wallet()
