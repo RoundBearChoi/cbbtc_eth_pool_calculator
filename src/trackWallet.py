@@ -1,172 +1,66 @@
 from web3 import Web3
-import requests
-from datetime import datetime, timedelta, timezone
-import csv
-import os
 
-class Wallet:
-    def __init__(self):
-        self.address = None
-        self.eth_balance = 0.0
-        self.cbbtc_balance = 0.0
+# ================== INPUTS ==================
+wallet_address = input("Enter your Base wallet address: ").strip()
+days_ago = int(input("How many days ago? "))
+api_key = input("Enter your Alchemy API key: ").strip()
 
-    def update_balances(self) -> bool:
-        address_input = input("\nenter your base network wallet address (starts with 0x): ").strip()
-        if not address_input.startswith("0x") or len(address_input) != 42:
-            print("❌ invalid address format")
-            return False
+# ================== SETUP ==================
+RPC_URL = f"https://base-mainnet.g.alchemy.com/v2/{api_key}"
+web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
-        w3 = Web3(Web3.HTTPProvider("https://mainnet.base.org"))
-        if not w3.is_connected():
-            print("❌ could not connect..")
-            return False
+if not web3.is_connected():
+    print("❌ Failed to connect to Base network")
+    exit()
 
-        try:
-            self.address = w3.to_checksum_address(address_input)
-            print("\n🔄 fetching balances..")
+wallet_address = web3.to_checksum_address(wallet_address)
 
-            self.eth_balance = float(w3.from_wei(w3.eth.get_balance(self.address), "ether"))
+# Correct cbBTC contract on Base
+CBTC_ADDRESS = web3.to_checksum_address("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf")
 
-            cbbtc_contract = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
-            abi = [{"constant": True, "inputs": [{"name": "_owner", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "balance", "type": "uint256"}], "type": "function"}]
-            contract = w3.eth.contract(address=w3.to_checksum_address(cbbtc_contract), abi=abi)
-            self.cbbtc_balance = float(contract.functions.balanceOf(self.address).call()) / 10**8
+# Minimal ABI (just balanceOf)
+CBTC_ABI = [{
+    "constant": True,
+    "inputs": [{"name": "who", "type": "address"}],
+    "name": "balanceOf",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "payable": False,
+    "stateMutability": "view",
+    "type": "function"
+}]
 
-            return True
-        except Exception as e:
-            print(f"❌ {e}")
-            return False
+contract = web3.eth.contract(address=CBTC_ADDRESS, abi=CBTC_ABI)
+CBTC_DECIMALS = 8  # cbBTC uses 8 decimals (like BTC)
 
-    def get_eth_cbbtc_activity(self, hours: int = 48):
-        if not self.address:
-            print("❌ run update_balances first")
-            return
+# Better block estimate for Base (~2s block time)
+blocks_per_day = 43200
+current_block = web3.eth.block_number
+target_block = max(1, current_block - (days_ago * blocks_per_day))
 
-        cutoff = int((datetime.now(timezone.utc) - timedelta(hours=hours)).timestamp())
-        url = "https://base.blockscout.com/api"
-        print(f"\n🔍 fetching ETH + ALL ERC-20 tokens (last {hours}h)...")
+print(f"\n📍 Current block : {current_block:,}")
+print(f"📍 Target block (~{days_ago} days ago): {target_block:,}\n")
 
-        raw_tx = []
-        lower_addr = self.address.lower()
+# ================== CURRENT BALANCES ==================
+print("🔄 Fetching CURRENT balances...\n")
 
-        for action in ["txlist", "txlistinternal", "tokentx"]:
-            params = {
-                "module": "account",
-                "action": action,
-                "address": self.address,
-                "offset": "1000",
-                "sort": "desc"
-            }
-            try:
-                r = requests.get(url, params=params, timeout=20).json()
-                results = r.get("result", [])
-                print(f"   [DEBUG] {action}: {len(results)} records found")
+current_eth = web3.eth.get_balance(wallet_address)
+print(f"ETH   : {web3.from_wei(current_eth, 'ether'):.6f} ETH")
 
-                for tx in results:
-                    ts = int(tx.get("timeStamp", 0))
-                    if ts < cutoff:
-                        break
+try:
+    current_cbbtc = contract.functions.balanceOf(wallet_address).call()
+    print(f"cbBTC : {current_cbbtc / (10 ** CBTC_DECIMALS):.8f} cbBTC")
+except Exception as e:
+    print(f"❌ Error fetching current cbBTC: {e}")
 
-                    if action == "tokentx":
-                        decimal = int(tx.get("tokenDecimal", 18))
-                        value = int(tx["value"]) / (10 ** decimal)
-                        token = tx.get("tokenSymbol", "UNKNOWN").strip() or "???"
-                        label = f"{token} Transfer"
-                    else:
-                        value = int(tx.get("value", 0)) / 10**18
-                        token = "ETH"
-                        if action == "txlistinternal" and value < 0.00000001:
-                            continue
-                        to_addr = tx.get("to", "").lower()
-                        if any(p in to_addr for p in ["46a15b0b", "c6a2db66"]):
-                            label = "🥞 Pancake V3 LP"
-                        else:
-                            label = "Internal ETH" if action == "txlistinternal" else ("ETH Transfer" if value > 0.000001 else "Contract Call")
+# ================== PAST BALANCES ==================
+print(f"\n🔄 Fetching balances ~{days_ago} day(s) ago (block {target_block})...\n")
 
-                    is_in = tx.get("from", "").lower() != lower_addr
-                    signed_amount = value if is_in else -value
+past_eth = web3.eth.get_balance(wallet_address, block_identifier=target_block)
+print(f"ETH   : {web3.from_wei(past_eth, 'ether'):.6f} ETH")
 
-                    raw_tx.append({
-                        "time": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"),
-                        "date": datetime.fromtimestamp(ts).strftime("%Y-%m-%d"),
-                        "time_only": datetime.fromtimestamp(ts).strftime("%H:%M:%S"),
-                        "signed_amount": signed_amount,
-                        "token": token,
-                        "label": label,
-                        "timestamp": ts,
-                        "hash": tx.get("hash") or tx.get("parentHash", "")
-                    })
-            except Exception as e:
-                print(f"   ⚠️ {action} error: {e}")
-
-        if not raw_tx:
-            print("\n   No activity found.")
-            self.print_current_balance()
-            return
-
-        # Dedupe + oldest → newest
-        tx_list = list({t["time"]: t for t in raw_tx}.values())
-        tx_list.sort(key=lambda x: x["timestamp"])
-
-        # === BACKWARD calculation (newest balance = real current) ===
-        current_eth = self.eth_balance
-        current_cbbtc = self.cbbtc_balance
-
-        for tx in reversed(tx_list):          # start from newest tx
-            tx['balance_eth_after'] = current_eth
-            tx['balance_cbbtc_after'] = current_cbbtc
-
-            # Undo this transaction to get balance before it
-            if tx['token'] == "ETH":
-                current_eth -= tx['signed_amount']   # reverse the sign
-            elif tx['token'].upper() == "CBBTC":
-                current_cbbtc -= tx['signed_amount']
-
-        # Console print (oldest → newest)
-        print(f"\n✅ {len(tx_list)} activities found (oldest → newest):\n")
-        for t in tx_list:
-            print(f"{t['time']}  | {t['signed_amount']:+18.8f} {t['token']:>8}  |  {t['label']}")
-
-        self.print_current_balance()
-
-        # CSV export
-        self.export_to_csv(tx_list)
-
-    def print_current_balance(self):
-        print("\n" + "="*100)
-        print("✅ CURRENT BALANCE")
-        print("="*100)
-        print(f"   eth   : {self.eth_balance:.8f}")
-        print(f"   cbbtc : {self.cbbtc_balance:.8f}")
-        print("="*100)
-
-    def export_to_csv(self, tx_list):
-        short_addr = self.address[:8] + "..." + self.address[-6:]
-        filename = f"transactions_{short_addr}_last48h.csv"
-
-        headers = ["date", "time", "signed_amount", "token_symbol", "label", "balance_cbbtc_after", "balance_eth_after", "tx_hash"]
-
-        with open(filename, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(headers)
-
-            for t in tx_list:
-                row = [
-                    t['date'],
-                    t['time_only'],
-                    round(t['signed_amount'], 8),
-                    t['token'],
-                    t['label'],
-                    round(t['balance_cbbtc_after'], 8),
-                    round(t['balance_eth_after'], 8),
-                    t['hash']
-                ]
-                writer.writerow(row)
-
-        print(f"\n💾 CSV saved → **{filename}**")
-        print(f"   Full path: {os.path.abspath(filename)}")
-
-if __name__ == "__main__":
-    wallet = Wallet()
-    if wallet.update_balances():
-        wallet.get_eth_cbbtc_activity(48)
+try:
+    past_cbbtc = contract.functions.balanceOf(wallet_address).call(block_identifier=target_block)
+    print(f"cbBTC : {past_cbbtc / (10 ** CBTC_DECIMALS):.8f} cbBTC")
+except Exception as e:
+    print(f"❌ Error fetching past cbBTC: {e}")
+    print("   → Common fix: try smaller 'days_ago' (Alchemy free tier has archive limits)")
