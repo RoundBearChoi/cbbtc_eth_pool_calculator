@@ -54,7 +54,7 @@ class WalletTracker:
             return "N/A"
 
     def track(self):
-        """Run the full balance tracking with clean KST timestamps (no '~X days ago' on target block)."""
+        """Run the full balance tracking with clean KST timestamps."""
         # Fetch block timestamps once
         try:
             current_ts = self.web3.eth.get_block(self.current_block)['timestamp']
@@ -99,11 +99,11 @@ class WalletTracker:
             print("   → Common fix: try smaller 'days_ago' (Alchemy free tier has archive limits)")
 
 
-# ================== RUN (exact same UX as original) ==================
+# ================== RUN (new input order) ==================
 if __name__ == "__main__":
     wallet_address = input("Enter your Base wallet address: ").strip()
-    days_ago = int(input("How many days ago? "))
     api_key = input("Enter your Alchemy API key: ").strip()
+    days_ago = int(input("How many days ago? "))
 
     tracker = WalletTracker(wallet_address, days_ago, api_key)
     tracker.track()
