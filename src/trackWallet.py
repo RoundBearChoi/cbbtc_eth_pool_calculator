@@ -25,14 +25,12 @@ class Wallet:
             self.address = w3.to_checksum_address(address_input)
             print("\n🔄 fetching balances..")
 
-            # ← FIXED: convert Decimal → float for easy math
             self.eth_balance = float(w3.from_wei(w3.eth.get_balance(self.address), "ether"))
 
             cbbtc_contract = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
             abi = [{"constant": True, "inputs": [{"name": "_owner", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "balance", "type": "uint256"}], "type": "function"}]
             contract = w3.eth.contract(address=w3.to_checksum_address(cbbtc_contract), abi=abi)
-            raw_balance = contract.functions.balanceOf(self.address).call()
-            self.cbbtc_balance = float(raw_balance) / 10**8
+            self.cbbtc_balance = float(contract.functions.balanceOf(self.address).call()) / 10**8
 
             return True
         except Exception as e:
@@ -87,14 +85,15 @@ class Wallet:
                         else:
                             label = "Internal ETH" if action == "txlistinternal" else ("ETH Transfer" if value > 0.000001 else "Contract Call")
 
-                    direction = "OUT" if tx.get("from", "").lower() == lower_addr else "IN"
+                    is_in = tx.get("from", "").lower() != lower_addr
+                    signed_amount = value if is_in else -value
 
                     raw_tx.append({
                         "time": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"),
                         "date": datetime.fromtimestamp(ts).strftime("%Y-%m-%d"),
                         "time_only": datetime.fromtimestamp(ts).strftime("%H:%M:%S"),
-                        "dir": direction,
-                        "amount": value,
+                        "signed_amount": signed_amount,
+                        "amount": value,          # positive for balance math
                         "token": token,
                         "label": label,
                         "timestamp": ts
@@ -111,7 +110,7 @@ class Wallet:
         tx_list = list({t["time"]: t for t in raw_tx}.values())
         tx_list.sort(key=lambda x: x["timestamp"])
 
-        # === Calculate balance AFTER each transaction (starting from current balance) ===
+        # Calculate balance AFTER each transaction
         current_eth = self.eth_balance
         current_cbbtc = self.cbbtc_balance
 
@@ -119,27 +118,25 @@ class Wallet:
             tx['balance_eth_after'] = current_eth
             tx['balance_cbbtc_after'] = current_cbbtc
 
-            # Undo this transaction to get previous balance
-            if tx['dir'] == "OUT":
+            if tx['signed_amount'] < 0:   # OUT
                 if tx['token'] == "ETH":
                     current_eth += tx['amount']
                 else:
                     current_cbbtc += tx['amount']
-            else:  # IN
+            else:                         # IN
                 if tx['token'] == "ETH":
                     current_eth -= tx['amount']
                 else:
                     current_cbbtc -= tx['amount']
 
-        # === Nice console print ===
+        # Console print (signed amounts)
         print(f"\n✅ {len(tx_list)} activities found (oldest → newest):\n")
         for t in tx_list:
-            amt_str = f"{t['amount']:.8f}"
-            print(f"{t['time']}  |  {t['dir']:>3}   {amt_str:>18}  |  {t['token']:>6}  |  {t['label']}")
+            print(f"{t['time']}  | {t['signed_amount']:+20.8f}  |  {t['token']:>6}  |  {t['label']}")
 
         self.print_current_balance()
 
-        # === CSV EXPORT ===
+        # CSV EXPORT (signed amounts, no bound column)
         self.export_to_csv(tx_list)
 
     def print_current_balance(self):
@@ -154,7 +151,7 @@ class Wallet:
         short_addr = self.address[:8] + "..." + self.address[-6:]
         filename = f"transactions_{short_addr}_last48h.csv"
 
-        headers = ["date", "time", "bound", "cbbtc_amount", "eth_amount", "balance_cbbtc_after", "balance_eth_after", "label"]
+        headers = ["date", "time", "cbbtc_amount", "eth_amount", "balance_cbbtc_after", "balance_eth_after", "label"]
 
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
@@ -164,9 +161,8 @@ class Wallet:
                 row = [
                     t['date'],
                     t['time_only'],
-                    t['dir'],
-                    round(t['amount'], 8) if t['token'] == "cbBTC" else 0.00000000,
-                    round(t['amount'], 8) if t['token'] == "ETH" else 0.00000000,
+                    round(t['signed_amount'], 8) if t['token'] == "cbBTC" else 0.00000000,
+                    round(t['signed_amount'], 8) if t['token'] == "ETH" else 0.00000000,
                     round(t['balance_cbbtc_after'], 8),
                     round(t['balance_eth_after'], 8),
                     t['label']
