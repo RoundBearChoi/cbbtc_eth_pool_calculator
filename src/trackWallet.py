@@ -44,7 +44,7 @@ class Wallet:
 
         cutoff = int((datetime.now(timezone.utc) - timedelta(hours=hours)).timestamp())
         url = "https://base.blockscout.com/api"
-        print(f"\n🔍 fetching ALL ETH + cbBTC activity (last {hours}h)...")
+        print(f"\n🔍 fetching ETH + ALL ERC-20 tokens (last {hours}h)...")
 
         raw_tx = []
         lower_addr = self.address.lower()
@@ -57,11 +57,8 @@ class Wallet:
                 "offset": "1000",
                 "sort": "desc"
             }
-            if action == "tokentx":
-                params["contractaddress"] = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
-
             try:
-                r = requests.get(url, params=params, timeout=15).json()
+                r = requests.get(url, params=params, timeout=20).json()
                 results = r.get("result", [])
                 print(f"   [DEBUG] {action}: {len(results)} records found")
 
@@ -71,9 +68,10 @@ class Wallet:
                         break
 
                     if action == "tokentx":
-                        value = int(tx["value"]) / 10**8
-                        token = "cbBTC"
-                        label = "cbBTC Transfer"
+                        decimal = int(tx.get("tokenDecimal", 18))
+                        value = int(tx["value"]) / (10 ** decimal)
+                        token = tx.get("tokenSymbol", "UNKNOWN").strip() or "???"
+                        label = f"{token} Transfer"
                     else:
                         value = int(tx.get("value", 0)) / 10**18
                         token = "ETH"
@@ -93,65 +91,60 @@ class Wallet:
                         "date": datetime.fromtimestamp(ts).strftime("%Y-%m-%d"),
                         "time_only": datetime.fromtimestamp(ts).strftime("%H:%M:%S"),
                         "signed_amount": signed_amount,
-                        "amount": value,          # positive for balance math
                         "token": token,
                         "label": label,
-                        "timestamp": ts
+                        "timestamp": ts,
+                        "hash": tx.get("hash") or tx.get("parentHash", "")
                     })
             except Exception as e:
                 print(f"   ⚠️ {action} error: {e}")
 
         if not raw_tx:
-            print("\n   No ETH or cbBTC activity in the last 48 hours.")
+            print("\n   No activity found.")
             self.print_current_balance()
             return
 
-        # Dedupe + sort OLDEST → NEWEST
+        # Dedupe + oldest → newest
         tx_list = list({t["time"]: t for t in raw_tx}.values())
         tx_list.sort(key=lambda x: x["timestamp"])
 
-        # Calculate balance AFTER each transaction
+        # === BACKWARD calculation (newest balance = real current) ===
         current_eth = self.eth_balance
         current_cbbtc = self.cbbtc_balance
 
-        for tx in reversed(tx_list):
+        for tx in reversed(tx_list):          # start from newest tx
             tx['balance_eth_after'] = current_eth
             tx['balance_cbbtc_after'] = current_cbbtc
 
-            if tx['signed_amount'] < 0:   # OUT
-                if tx['token'] == "ETH":
-                    current_eth += tx['amount']
-                else:
-                    current_cbbtc += tx['amount']
-            else:                         # IN
-                if tx['token'] == "ETH":
-                    current_eth -= tx['amount']
-                else:
-                    current_cbbtc -= tx['amount']
+            # Undo this transaction to get balance before it
+            if tx['token'] == "ETH":
+                current_eth -= tx['signed_amount']   # reverse the sign
+            elif tx['token'].upper() == "CBBTC":
+                current_cbbtc -= tx['signed_amount']
 
-        # Console print (signed amounts)
+        # Console print (oldest → newest)
         print(f"\n✅ {len(tx_list)} activities found (oldest → newest):\n")
         for t in tx_list:
-            print(f"{t['time']}  | {t['signed_amount']:+20.8f}  |  {t['token']:>6}  |  {t['label']}")
+            print(f"{t['time']}  | {t['signed_amount']:+18.8f} {t['token']:>8}  |  {t['label']}")
 
         self.print_current_balance()
 
-        # CSV EXPORT (signed amounts, no bound column)
+        # CSV export
         self.export_to_csv(tx_list)
 
     def print_current_balance(self):
-        print("\n" + "="*90)
+        print("\n" + "="*100)
         print("✅ CURRENT BALANCE")
-        print("="*90)
+        print("="*100)
         print(f"   eth   : {self.eth_balance:.8f}")
         print(f"   cbbtc : {self.cbbtc_balance:.8f}")
-        print("="*90)
+        print("="*100)
 
     def export_to_csv(self, tx_list):
         short_addr = self.address[:8] + "..." + self.address[-6:]
         filename = f"transactions_{short_addr}_last48h.csv"
 
-        headers = ["date", "time", "cbbtc_amount", "eth_amount", "balance_cbbtc_after", "balance_eth_after", "label"]
+        headers = ["date", "time", "signed_amount", "token_symbol", "label", "balance_cbbtc_after", "balance_eth_after", "tx_hash"]
 
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
@@ -161,11 +154,12 @@ class Wallet:
                 row = [
                     t['date'],
                     t['time_only'],
-                    round(t['signed_amount'], 8) if t['token'] == "cbBTC" else 0.00000000,
-                    round(t['signed_amount'], 8) if t['token'] == "ETH" else 0.00000000,
+                    round(t['signed_amount'], 8),
+                    t['token'],
+                    t['label'],
                     round(t['balance_cbbtc_after'], 8),
                     round(t['balance_eth_after'], 8),
-                    t['label']
+                    t['hash']
                 ]
                 writer.writerow(row)
 
