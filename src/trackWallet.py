@@ -30,9 +30,6 @@ class Wallet:
             contract = w3.eth.contract(address=w3.to_checksum_address(cbbtc_contract), abi=abi)
             self.cbbtc_balance = contract.functions.balanceOf(self.address).call() / 10**8
 
-            print("\n✅ current balance")
-            print(f"   eth   : {self.eth_balance:.6f}")
-            print(f"   cbbtc : {self.cbbtc_balance:.8f}")
             return True
         except Exception as e:
             print(f"❌ {e}")
@@ -89,7 +86,7 @@ class Wallet:
                     direction = "OUT" if tx.get("from", "").lower() == lower_addr else "IN"
 
                     tx_list.append({
-                        "time": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
+                        "time": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"),
                         "dir": direction,
                         "amount": value,
                         "label": label,
@@ -100,15 +97,28 @@ class Wallet:
 
         if not tx_list:
             print("\n   No ETH or cbBTC activity in the last 48 hours.")
+            self.print_current_balance()
             return
 
-        tx_list = list({(t["time"], t["amount"], t["label"]): t for t in tx_list}.values())  # simple dedupe
-        tx_list.sort(key=lambda x: x["time"], reverse=True)
+        # Dedupe + sort OLDEST → NEWEST
+        tx_list = list({(t["time"], t["amount"], t["label"]): t for t in tx_list}.values())
+        tx_list.sort(key=lambda x: x["time"])
 
-        print(f"\n✅ {len(tx_list)} ETH & cbBTC activities found:\n")
+        print(f"\n✅ {len(tx_list)} ETH & cbBTC activities found (oldest → newest):\n")
         for t in tx_list:
             amt_str = f"{t['amount']:.6f} ETH" if t["type"] == "ETH" else f"{t['amount']:.8f} cbBTC"
             print(f"{t['time']}  |  {t['dir']:>3}  {amt_str:>18}  |  {t['label']}")
+
+        # Current balance at the very end
+        self.print_current_balance()
+
+    def print_current_balance(self):
+        print("\n" + "="*70)
+        print("✅ CURRENT BALANCE (after all listed activity)")
+        print("="*70)
+        print(f"   eth   : {self.eth_balance:.6f}")
+        print(f"   cbbtc : {self.cbbtc_balance:.8f}")
+        print("="*70)
 
 if __name__ == "__main__":
     wallet = Wallet()
