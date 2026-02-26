@@ -1,5 +1,7 @@
 from web3 import Web3
 import sys
+from datetime import datetime, timezone, timedelta
+
 
 class WalletTracker:
     # ================== CONSTANTS ==================
@@ -42,13 +44,35 @@ class WalletTracker:
         self.current_block = self.web3.eth.block_number
         self.target_block = max(1, self.current_block - (self.days_ago * self.BLOCKS_PER_DAY))
 
+    def _format_kst(self, timestamp: int) -> str:
+        """Convert Unix timestamp to KST string (UTC+9)."""
+        try:
+            utc_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            kst_dt = utc_dt + timedelta(hours=9)
+            return kst_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            return "N/A"
+
     def track(self):
-        """Run the full balance tracking with identical output to original script."""
-        print(f"\n📍 Current block : {self.current_block:,}")
-        print(f"📍 Target block (~{self.days_ago} days ago): {self.target_block:,}\n")
+        """Run the full balance tracking with clean KST timestamps (no '~X days ago' on target block)."""
+        # Fetch block timestamps once
+        try:
+            current_ts = self.web3.eth.get_block(self.current_block)['timestamp']
+            current_kst = self._format_kst(current_ts)
+        except Exception:
+            current_kst = "N/A"
+
+        try:
+            target_ts = self.web3.eth.get_block(self.target_block)['timestamp']
+            target_kst = self._format_kst(target_ts)
+        except Exception:
+            target_kst = "N/A"
+
+        print(f"📍 Current block : {self.current_block:,} ({current_kst} KST)")
+        print(f"📍 Target block  : {self.target_block:,} ({target_kst} KST)\n")
 
         # ================== CURRENT BALANCES ==================
-        print("🔄 Fetching CURRENT balances...\n")
+        print(f"🔄 Fetching CURRENT balances ({current_kst} KST)...\n")
 
         current_eth = self.web3.eth.get_balance(self.wallet_address)
         print(f"ETH   : {self.web3.from_wei(current_eth, 'ether'):.6f} ETH")
@@ -60,7 +84,7 @@ class WalletTracker:
             print(f"❌ Error fetching current cbBTC: {e}")
 
         # ================== PAST BALANCES ==================
-        print(f"\n🔄 Fetching balances ~{self.days_ago} day(s) ago (block {self.target_block})...\n")
+        print(f"\n🔄 Fetching balances ~{self.days_ago} day(s) ago ({target_kst} KST)...\n")
 
         past_eth = self.web3.eth.get_balance(self.wallet_address, block_identifier=self.target_block)
         print(f"ETH   : {self.web3.from_wei(past_eth, 'ether'):.6f} ETH")
