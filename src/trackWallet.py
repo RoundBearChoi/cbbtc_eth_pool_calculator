@@ -68,11 +68,12 @@ class WalletTracker:
         except Exception:
             target_kst = "N/A"
 
+        print('')
         print(f"📍 Current block : {self.current_block:,} ({current_kst} KST)")
         print(f"📍 Target block  : {self.target_block:,} ({target_kst} KST)\n")
 
         # ================== CURRENT BALANCES ==================
-        print(f"🔄 Fetching CURRENT balances ({current_kst} KST)...\n")
+        print(f"🔄 Fetching CURRENT balances ({current_kst} KST)...")
 
         current_eth = self.web3.eth.get_balance(self.wallet_address)
         print(f"ETH   : {self.web3.from_wei(current_eth, 'ether'):.6f} ETH")
@@ -84,7 +85,7 @@ class WalletTracker:
             print(f"❌ Error fetching current cbBTC: {e}")
 
         # ================== PAST BALANCES ==================
-        print(f"\n🔄 Fetching balances ~{self.days_ago} day(s) ago ({target_kst} KST)...\n")
+        print(f"\n🔄 Fetching balances ~{self.days_ago} day(s) ago ({target_kst} KST)...")
 
         past_eth = self.web3.eth.get_balance(self.wallet_address, block_identifier=self.target_block)
         print(f"ETH   : {self.web3.from_wei(past_eth, 'ether'):.6f} ETH")
@@ -99,10 +100,20 @@ class WalletTracker:
             print("   → Common fix: try smaller 'days_ago' (Alchemy free tier has archive limits)")
 
 
-# ================== RUN (new input order) ==================
+# ================== RUN (CLI + interactive fallback) ==================
 if __name__ == "__main__":
-    wallet_address = input("Enter your Base wallet address: ").strip()
-    api_key = input("Enter your Alchemy API key: ").strip()
+    # Support: python trackWallet.py WALLET_ADDRESS API_KEY
+    # If any is left blank or missing → asks interactively
+    if len(sys.argv) > 1 and sys.argv[1].strip():
+        wallet_address = sys.argv[1].strip()
+    else:
+        wallet_address = input("Enter your Base wallet address: ").strip()
+
+    if len(sys.argv) > 2 and sys.argv[2].strip():
+        api_key = sys.argv[2].strip()
+    else:
+        api_key = input("Enter your Alchemy API key: ").strip()
+
     days_ago = int(input("How many days ago? "))
 
     tracker = WalletTracker(wallet_address, days_ago, api_key)
