@@ -8,7 +8,7 @@ class PanPrice:
     
 
     def __init__(self):
-        self.current_price = None  # WETH per 1 cbBTC
+        self.current_price = None  #WETH per 1 cbBTC
     
 
     def fetch_current_price(self) -> float:
